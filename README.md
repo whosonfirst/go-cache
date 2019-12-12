@@ -1,6 +1,6 @@
 # go-cache
 
-Go package for reading and writing Who's On First documents from a variety of sources.
+Go interface for caching things
 
 _This package replaces [go-whosonfirst-cache](https://github.com/whosonfirst/go-whosonfirst-cache) which will be retired soon._
 
@@ -19,6 +19,8 @@ All of this package's dependencies are bundled with the code in the `vendor` dir
 ```
 type Cache interface {
      	Name() string
+	Open(context.Context, string) error
+	Close(context.Context) error
 	Get(context.Context, string) (io.ReadCloser, error)
 	Set(context.Context, string, io.ReadCloser) (io.ReadCloser, error)
 	Unset(context.Context, string) error

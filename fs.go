@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	_ "log"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
@@ -26,28 +27,17 @@ type FSCache struct {
 	DirectoryPerms os.FileMode
 }
 
-func NewFSCache(root string) (Cache, error) {
+func init() {
+	ctx := context.Background()
+	c := NewFSCache()
+	RegisterCache(ctx, "fs", c)
+}
 
-	abs_root, err := filepath.Abs(root)
-
-	if err != nil {
-		return nil, err
-	}
-
-	info, err := os.Stat(abs_root)
-
-	if os.IsNotExist(err) {
-		return nil, errors.New("Root doesn't exist")
-	}
-
-	if !info.IsDir() {
-		return nil, errors.New("Root is not a directory")
-	}
+func NewFSCache() Cache {
 
 	mu := new(sync.RWMutex)
 
-	c := FSCache{
-		root:           abs_root,
+	c := &FSCache{
 		hits:           int64(0),
 		misses:         int64(0),
 		mu:             mu,
@@ -56,7 +46,41 @@ func NewFSCache(root string) (Cache, error) {
 		DirectoryPerms: 0755,
 	}
 
-	return &c, nil
+	return c
+}
+
+func (c *FSCache) Open(ctx context.Context, uri string) error {
+
+	u, err := url.Parse(uri)
+
+	if err != nil {
+		return err
+	}
+
+	root := u.Path
+
+	abs_root, err := filepath.Abs(root)
+
+	if err != nil {
+		return err
+	}
+
+	info, err := os.Stat(abs_root)
+
+	if os.IsNotExist(err) {
+		return errors.New("Root doesn't exist")
+	}
+
+	if !info.IsDir() {
+		return errors.New("Root is not a directory")
+	}
+
+	c.root = root
+	return nil
+}
+
+func (c *FSCache) Close(ctx context.Context) error {
+	return nil
 }
 
 func (c *FSCache) Name() string {

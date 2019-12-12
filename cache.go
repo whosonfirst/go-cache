@@ -1,14 +1,16 @@
 package cache
 
 import (
-	"bytes"
 	"context"
+	"github.com/aaronland/go-roster"
 	"io"
-	"io/ioutil"
 	_ "log"
+	"net/url"
 )
 
 type Cache interface {
+	Open(context.Context, string) error
+	Close(context.Context) error
 	Name() string
 	Get(context.Context, string) (io.ReadCloser, error)
 	Set(context.Context, string, io.ReadCloser) (io.ReadCloser, error)
@@ -20,53 +22,58 @@ type Cache interface {
 	SizeWithContext(context.Context) int64
 }
 
-func NewReadCloser(b []byte) io.ReadCloser {
-	r := bytes.NewReader(b)
-	return ioutil.NopCloser(r)
-}
+var caches roster.Roster
 
-func NewReadCloserFromString(s string) io.ReadCloser {
-	return NewReadCloser([]byte(s))
-}
+func ensureRoster() error {
 
-func SetString(c Cache, k string, v string) (string, error) {
+	if caches == nil {
 
-	ctx := context.Background()
+		r, err := roster.NewDefaultRoster()
 
-	r := NewReadCloserFromString(v)
-	fh, err := c.Set(ctx, k, r)
+		if err != nil {
+			return err
+		}
 
-	if err != nil {
-		return "", err
+		caches = r
 	}
 
-	defer fh.Close()
-
-	return toString(fh)
+	return nil
 }
 
-func GetString(c Cache, k string) (string, error) {
+func RegisterCache(ctx context.Context, name string, c Cache) error {
 
-	ctx := context.Background()
-
-	fh, err := c.Get(ctx, k)
+	err := ensureRoster()
 
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	defer fh.Close()
-
-	return toString(fh)
+	return caches.Register(ctx, name, c)
 }
 
-func toString(fh io.Reader) (string, error) {
+func NewCache(ctx context.Context, uri string) (Cache, error) {
 
-	b, err := ioutil.ReadAll(fh)
+	u, err := url.Parse(uri)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(b), nil
+	scheme := u.Scheme
+
+	i, err := caches.Driver(ctx, scheme)
+
+	if err != nil {
+		return nil, err
+	}
+
+	c := i.(Cache)
+
+	err = c.Open(ctx, uri)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
 }

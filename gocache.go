@@ -7,20 +7,11 @@ import (
 	gocache "github.com/patrickmn/go-cache"
 	"io"
 	"io/ioutil"
+	"net/url"
 	"strconv"
 	"sync/atomic"
 	"time"
 )
-
-type GoCache struct {
-	Cache
-	Options   *GoCacheOptions
-	cache     *gocache.Cache
-	hits      int64
-	misses    int64
-	evictions int64
-	keys      int64
-}
 
 type GoCacheOptions struct {
 	DefaultExpiration time.Duration
@@ -37,60 +28,85 @@ func DefaultGoCacheOptions() (*GoCacheOptions, error) {
 	return &opts, nil
 }
 
-func GoCacheOptionsFromArgs(args map[string]string) (*GoCacheOptions, error) {
-
-	opts, err := DefaultGoCacheOptions()
-
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: parse out 1m, etc. strings
-	// (20171229/thisisaaronland)
-
-	str_exp, ok := args["DefaultExpiration"]
-
-	if ok {
-
-		exp, err := strconv.Atoi(str_exp)
-
-		if err != nil {
-			return nil, err
-		}
-
-		opts.DefaultExpiration = time.Duration(exp) * time.Second
-	}
-
-	str_cleanup, ok := args["CleanupInterval"]
-
-	if ok {
-
-		cleanup, err := strconv.Atoi(str_cleanup)
-
-		if err != nil {
-			return nil, err
-		}
-
-		opts.CleanupInterval = time.Duration(cleanup) * time.Second
-	}
-
-	return opts, nil
+type GoCache struct {
+	Cache
+	Options   *GoCacheOptions
+	cache     *gocache.Cache
+	hits      int64
+	misses    int64
+	evictions int64
+	keys      int64
 }
 
-func NewGoCache(opts *GoCacheOptions) (Cache, error) {
+func init() {
+	ctx := context.Background()
+	c := NewGoCache()
+	RegisterCache(ctx, "gocache", c)
+}
 
-	c := gocache.New(opts.DefaultExpiration, opts.CleanupInterval)
+func NewGoCache() Cache {
 
-	lc := GoCache{
-		Options:   opts,
-		cache:     c,
+	c := &GoCache{
 		hits:      int64(0),
 		misses:    int64(0),
 		evictions: int64(0),
 		keys:      0,
 	}
 
-	return &lc, nil
+	return c
+}
+
+func (c *GoCache) Open(ctx context.Context, uri string) error {
+
+	u, err := url.Parse(uri)
+
+	if err != nil {
+		return err
+	}
+
+	q := u.Query()
+
+	opts, err := DefaultGoCacheOptions()
+
+	// TODO: parse out 1m, etc. strings
+	// (20171229/thisisaaronland)
+
+	str_exp := q.Get("default_expiration")
+
+	if str_exp != "" {
+
+		exp, err := strconv.Atoi(str_exp)
+
+		if err != nil {
+			return err
+		}
+
+		opts.DefaultExpiration = time.Duration(exp) * time.Second
+	}
+
+	str_cleanup := q.Get("cleanup_interval")
+
+	if str_cleanup != "" {
+
+		cleanup, err := strconv.Atoi(str_cleanup)
+
+		if err != nil {
+			return err
+		}
+
+		opts.CleanupInterval = time.Duration(cleanup) * time.Second
+	}
+
+	gc := gocache.New(opts.DefaultExpiration, opts.CleanupInterval)
+
+	c.Options = opts
+	c.cache = gc
+
+	return nil
+}
+
+func (c *GoCache) Close(ctx context.Context) error {
+	return nil
 }
 
 func (c *GoCache) Name() string {
