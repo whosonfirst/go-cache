@@ -216,6 +216,12 @@ func main() {
 }
 ```
 
+To specify custom values for the `DefaultExpiration` and `CleanupInterval` properties pass use the `default_expiration` and `cleanup_interval` parameters, respectively. For example:
+
+```
+	c, _ := reader.NewCache(ctx, "gocache://?default_expiration=300&cleanup_interval=200")
+```
+
 * https://github.com/whosonfirst/go-cache
 
 ### null://
