@@ -6,7 +6,7 @@ _This package supersedes [go-whosonfirst-cache](https://github.com/whosonfirst/g
 
 ## Example
 
-Caches are instantiated with the `cache.NewCache` method which takes as its arguments a `context.Context` instance and a URI string. The URI's scheme represents the type of cache it implements and the remaining (URI) properties are used by that reader type to instantiate itself.
+Caches are instantiated with the `cache.NewCache` method which takes as its arguments a `context.Context` instance and a URI string. The URI's scheme represents the type of cache it implements and the remaining (URI) properties are used by that cache type to instantiate itself.
 
 For example to cache files to/from a directory on the local filesystem you would write:
 
@@ -70,9 +70,9 @@ type Cache interface {
 }
 ```
 
-## Custom readers
+## Custom caches
 
-Custom readers need to:
+Custom caches need to:
 
 1. Implement the interface above.
 2. Announce their availability using the `go-cache.Cache` method on initialization.
@@ -194,7 +194,7 @@ import (
 
 func main() {
 	ctx := context.Background()
-	c, _ := reader.NewCache(ctx, "fs:///usr/local/cache")
+	c, _ := cache.NewCache(ctx, "fs:///usr/local/cache")
 }
 ```
 
@@ -212,14 +212,14 @@ import (
 
 func main() {
 	ctx := context.Background()
-	c, _ := reader.NewCache(ctx, "gocache://")
+	c, _ := cache.NewCache(ctx, "gocache://")
 }
 ```
 
 To specify custom values for the `DefaultExpiration` and `CleanupInterval` properties pass use the `default_expiration` and `cleanup_interval` parameters, respectively. For example:
 
 ```
-	c, _ := reader.NewCache(ctx, "gocache://?default_expiration=300&cleanup_interval=200")
+	c, _ := cache.NewCache(ctx, "gocache://?default_expiration=300&cleanup_interval=200")
 ```
 
 * https://github.com/whosonfirst/go-cache
@@ -236,7 +236,7 @@ import (
 
 func main() {
 	ctx := context.Background()
-	c, _ := reader.NewCache(ctx, "null://")
+	c, _ := cache.NewCache(ctx, "null://")
 }
 ```
 
