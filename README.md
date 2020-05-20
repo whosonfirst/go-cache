@@ -57,7 +57,6 @@ There is also a handy `null://` cache which doesn't do anything at all (expect i
 ```
 type Cache interface {
      	Name() string
-	Open(context.Context, string) error
 	Close(context.Context) error
 	Get(context.Context, string) (io.ReadCloser, error)
 	Set(context.Context, string, io.ReadCloser) (io.ReadCloser, error)
@@ -105,10 +104,9 @@ type BlobCache struct {
 
 func init() {
 	ctx := context.Background()
-	c := NewBlobCache()
 
 	for _, scheme := range blob.DefaultURLMux().BucketSchemes() {
-		wof_cache.RegisterCache(ctx, scheme, c)
+		wof_cache.RegisterCache(ctx, scheme, NewBlobCache)
 	}
 }
 ```
@@ -118,26 +116,21 @@ Note: See the way we're registering available cache types based on the the list 
 ```
 func NewBlobCache() wof_cache.Cache {
 
+	bucket, err := blob.OpenBucket(ctx, uri)
+
+	if err != nil {
+		return nil, err
+	}
+
 	c := &BlobCache{
 		TTL:       0,
 		misses:    0,
 		sets:      0,
 		evictions: 0,
+		bucket:    bucket,
 	}
 
 	return c
-}
-
-func (c *BlobCache) Open(ctx context.Context, uri string) error {
-
-	bucket, err := blob.OpenBucket(ctx, uri)
-
-	if err != nil {
-		return err
-	}
-
-	c.bucket = bucket
-	return nil
 }
 ```
 
@@ -239,5 +232,3 @@ func main() {
 	c, _ := cache.NewCache(ctx, "null://")
 }
 ```
-
-* https://github.com/whosonfirst/go-cache
