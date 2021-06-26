@@ -109,7 +109,7 @@ func (mc *MultiCache) Get(ctx context.Context, key string) (io.ReadCloser, error
 			for _, c := range mc.caches {
 
 				// Only set caches that come *before* this cache
-				
+
 				if c.Name() == mc.Name() {
 					break
 				}

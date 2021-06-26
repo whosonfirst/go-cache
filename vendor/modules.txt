@@ -4,3 +4,6 @@ github.com/aaronland/go-roster
 # github.com/patrickmn/go-cache v2.1.0+incompatible
 ## explicit
 github.com/patrickmn/go-cache
+# github.com/whosonfirst/go-ioutil v1.0.0
+## explicit
+github.com/whosonfirst/go-ioutil

@@ -4,12 +4,11 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"io/ioutil"
 )
 
 func NewReadCloser(b []byte) io.ReadCloser {
 	r := bytes.NewReader(b)
-	return ioutil.NopCloser(r)
+	return io.NopCloser(r)
 }
 
 func NewReadCloserFromString(s string) io.ReadCloser {
