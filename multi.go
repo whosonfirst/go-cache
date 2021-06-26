@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -82,7 +81,7 @@ func (mc *MultiCache) Name() string {
 	return "multi"
 }
 
-func (mc *MultiCache) Get(ctx context.Context, key string) (io.ReadCloser, error) {
+func (mc *MultiCache) Get(ctx context.Context, key string) (io.ReadSeekCloser, error) {
 
 	for _, c := range mc.caches {
 
@@ -94,73 +93,40 @@ func (mc *MultiCache) Get(ctx context.Context, key string) (io.ReadCloser, error
 
 		atomic.AddInt64(&mc.hits, 1)
 
-		// START OF...
+		for _, c := range mc.caches {
 
-		body, err := io.ReadAll(fh)
+			// Only set caches that come *before* this cache
 
-		if err != nil {
-			return nil, err
+			if c.Name() == mc.Name() {
+				break
+			}
+
+			c.Set(ctx, key, fh)
+			fh.Seek(0, 0)
 		}
 
-		go func(body []byte) {
-
-			br := bytes.NewReader(body)
-
-			for _, c := range mc.caches {
-
-				// Only set caches that come *before* this cache
-
-				if c.Name() == mc.Name() {
-					break
-				}
-
-				cl := io.NopCloser(br)
-
-				c.Set(ctx, key, cl)
-				br.Seek(0, 0)
-			}
-		}(body)
-
-		// END OF...
-
-		br := bytes.NewReader(body)
-		cl := io.NopCloser(br)
-
-		return cl, nil
+		return fh, nil
 	}
 
 	atomic.AddInt64(&mc.misses, 1)
 	return nil, new(CacheMiss)
 }
 
-func (mc *MultiCache) Set(ctx context.Context, key string, fh io.ReadCloser) (io.ReadCloser, error) {
-
-	body, err := io.ReadAll(fh)
-
-	if err != nil {
-		return nil, err
-	}
-
-	br := bytes.NewReader(body)
+func (mc *MultiCache) Set(ctx context.Context, key string, fh io.ReadSeekCloser) (io.ReadSeekCloser, error) {
 
 	for _, c := range mc.caches {
 
-		br.Seek(0, 0)
-		cl := io.NopCloser(br)
-
-		_, err := c.Set(ctx, key, cl)
+		_, err := c.Set(ctx, key, fh)
 
 		if err != nil {
 			return nil, err
 		}
+
+		fh.Seek(0, 0)
 	}
 
 	atomic.AddInt64(&mc.size, 1)
-
-	br.Seek(0, 0)
-	cl := io.NopCloser(br)
-
-	return cl, nil
+	return fh, nil
 }
 
 func (mc *MultiCache) Unset(ctx context.Context, key string) error {

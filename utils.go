@@ -1,26 +1,24 @@
 package cache
 
 import (
-	"bytes"
 	"context"
+	"github.com/whosonfirst/go-ioutil"
 	"io"
+	"strings"
 )
-
-func NewReadCloser(b []byte) io.ReadCloser {
-	r := bytes.NewReader(b)
-	return io.NopCloser(r)
-}
-
-func NewReadCloserFromString(s string) io.ReadCloser {
-	return NewReadCloser([]byte(s))
-}
 
 func SetString(c Cache, k string, v string) (string, error) {
 
 	ctx := context.Background()
 
-	r := NewReadCloserFromString(v)
-	fh, err := c.Set(ctx, k, r)
+	r := strings.NewReader(v)
+	rsc, err := ioutil.NewReadSeekCloser(r)
+
+	if err != nil {
+		return "", err
+	}
+
+	fh, err := c.Set(ctx, k, rsc)
 
 	if err != nil {
 		return "", err
@@ -48,7 +46,7 @@ func GetString(c Cache, k string) (string, error) {
 
 func toString(fh io.Reader) (string, error) {
 
-	b, err := ioutil.ReadAll(fh)
+	b, err := io.ReadAll(fh)
 
 	if err != nil {
 		return "", err
