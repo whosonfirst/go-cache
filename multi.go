@@ -3,8 +3,10 @@ package cache
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
+	"net/url"
 	"sync/atomic"
 )
 
@@ -17,14 +19,41 @@ type MultiCache struct {
 	caches    []Cache
 }
 
-/*
 func init() {
 	ctx := context.Background()
-	RegisterCache(ctx, "null", NewMultiCache)
+	RegisterCache(ctx, "multi", NewMultiCache)
 }
-*/
 
-func NewMultiCache(ctx context.Context, caches ...Cache) (Cache, error) {
+func NewMultiCache(ctx context.Context, str_uri string) (Cache, error) {
+
+	u, err := url.Parse(str_uri)
+
+	if err != nil {
+		return nil, err
+	}
+
+	q := u.Query()
+
+	cache_uris := q["cache"]
+
+	caches := make([]Cache, len(cache_uris))
+
+	for idx, c_uri := range cache_uris {
+
+		c, err := cache.NewCache(ctx, c_uri)
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed to create cache for '%s', %v", c_uri, err)
+		}
+
+		caches[idx] = c
+	}
+
+	return NewMultiCacheWithCaches(ctx, caches...)
+}
+
+func NewMultiCacheWithCaches(ctx context.Context, caches ...Cache) (Cache, error) {
+
 	c := &MultiCache{
 		size:      int64(0),
 		hits:      int64(0),
@@ -32,6 +61,7 @@ func NewMultiCache(ctx context.Context, caches ...Cache) (Cache, error) {
 		evictions: int64(0),
 		caches:    caches,
 	}
+
 	return c, nil
 }
 
