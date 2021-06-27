@@ -39,7 +39,7 @@ func main() {
 		k := args[i]
 		v := args[i+1]
 
-		g, err := cache.GetString(c, k)
+		g, err := cache.GetString(ctx, c, k)
 
 		if err != nil && !cache.IsCacheMiss(err) {
 			log.Fatal(err)
@@ -47,7 +47,7 @@ func main() {
 
 		log.Println("GET", k, v, g)
 
-		s, err := cache.SetString(c, k, v)
+		s, err := cache.SetString(ctx, c, k, v)
 
 		if err != nil {
 			log.Fatal(err)
@@ -55,7 +55,7 @@ func main() {
 
 		log.Println("SET", k, v, s)
 
-		v2, err := cache.GetString(c, k)
+		v2, err := cache.GetString(ctx, c, k)
 
 		if err != nil {
 			log.Fatal(err)

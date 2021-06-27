@@ -7,18 +7,20 @@ import (
 	"strings"
 )
 
-func SetString(c Cache, k string, v string) (string, error) {
+func ReadSeekCloserFromString(v string) (io.ReadSeekCloser, error) {
+	sr := strings.NewReader(v)
+	return ioutil.NewReadSeekCloser(sr)
+}
 
-	ctx := context.Background()
+func SetString(ctx context.Context, c Cache, k string, v string) (string, error) {
 
-	r := strings.NewReader(v)
-	rsc, err := ioutil.NewReadSeekCloser(r)
+	fh, err := ReadSeekCloserFromString(v)
 
 	if err != nil {
 		return "", err
 	}
 
-	fh, err := c.Set(ctx, k, rsc)
+	fh, err = c.Set(ctx, k, fh)
 
 	if err != nil {
 		return "", err
@@ -29,9 +31,7 @@ func SetString(c Cache, k string, v string) (string, error) {
 	return toString(fh)
 }
 
-func GetString(c Cache, k string) (string, error) {
-
-	ctx := context.Background()
+func GetString(ctx context.Context, c Cache, k string) (string, error) {
 
 	fh, err := c.Get(ctx, k)
 
